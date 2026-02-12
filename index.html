@@ -11,13 +11,21 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://npmcdn.com/flatpickr/dist/l10n/th.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- เพิ่ม Bootstrap JS สำหรับ Modal -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <?!= include('Stylesheet'); ?>
+    
   </head>
   <body>
 
+    <!-- 3. ปุ่ม Link ไป Google Sheet -->
+    <a id="sheetLink" href="#" target="_blank" class="sheet-link-btn">
+      <i class="bi bi-file-earmark-spreadsheet-fill"></i> เปิด Sheet
+    </a>
+
     <div id="page-add" class="container page-section active">
-      <div class="card">
+      <div class="card mt-4">
         <h2>✨ บันทึกรายรับ-จ่าย</h2>
         <form id="myForm" onsubmit="handleFormSubmit(this)">
           <div class="d-flex justify-content-center mb-3">
@@ -57,8 +65,26 @@
     </div>
 
     <div id="page-stats" class="container page-section">
-      <div class="card">
+      <div class="card mt-4">
         <h4>📊 ภาพรวมการเงิน</h4>
+        
+        <!-- 1. ส่วนเลือกช่วงวันที่ (Start - End) -->
+        <div class="row g-2 mb-3 align-items-end p-2 bg-light rounded">
+          <div class="col-5">
+            <label class="small text-muted">ตั้งแต่วันที่</label>
+            <input type="text" id="startDate" class="form-control form-control-sm text-center bg-white" placeholder="วว/ดด/ปปปป">
+          </div>
+          <div class="col-5">
+            <label class="small text-muted">ถึงวันที่</label>
+            <input type="text" id="endDate" class="form-control form-control-sm text-center bg-white" placeholder="วว/ดด/ปปปป">
+          </div>
+          <div class="col-2">
+             <button onclick="loadDashboard()" class="btn btn-sm btn-primary w-100 h-100" style="max-height: 31px;">
+               <i class="bi bi-search"></i>
+             </button>
+          </div>
+        </div>
+
         <div class="row g-2 mb-3">
           <div class="col-4">
             <div class="summary-box bg-income">
@@ -79,9 +105,61 @@
         <div style="position: relative; height:250px; width:100%; margin-bottom:20px;">
           <canvas id="expenseChart"></canvas>
         </div>
-        <h6 class="text-muted mt-3">📝 รายการล่าสุด</h6>
-        <ul class="list-group list-group-flush" id="recentList" style="font-size: 0.9rem;"></ul>
-        <button onclick="loadDashboard()" class="btn btn-sm btn-outline-secondary mt-3 rounded-pill w-100">🔄 รีเฟรชข้อมูล</button>
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <h6 class="text-muted mb-0">📝 รายการ (ในช่วงวันที่เลือก)</h6>
+        </div>
+        <ul class="list-group list-group-flush mt-2" id="recentList" style="font-size: 0.9rem;"></ul>
+      </div>
+    </div>
+
+    <!-- 2. Modal สำหรับแก้ไขข้อมูล -->
+    <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 20px;">
+          <div class="modal-header bg-light">
+            <h5 class="modal-title" style="color:#555;">✏️ แก้ไขรายการ</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="editForm" onsubmit="handleEditSubmit(this)">
+              <!-- Hidden Field เก็บ Index ของแถว -->
+              <input type="hidden" name="rowIndex" id="editRowIndex">
+              
+              <div class="d-flex justify-content-center mb-3">
+                <input type="radio" class="btn-check" name="type" id="editIncome" value="รายรับ">
+                <label class="btn btn-sm btn-outline-primary me-2 rounded-pill px-3" for="editIncome">รายรับ</label>
+                <input type="radio" class="btn-check" name="type" id="editExpense" value="รายจ่าย">
+                <label class="btn btn-sm btn-outline-danger rounded-pill px-3" for="editExpense">รายจ่าย</label>
+              </div>
+
+              <div class="mb-2">
+                <label class="small text-muted">วันที่</label>
+                <input type="text" class="form-control" name="date" id="editDatePicker" required>
+              </div>
+              <div class="mb-2">
+                <label class="small text-muted">หมวดหมู่</label>
+                <select class="form-select" name="category" id="editCategory">
+                  <option value="อาหาร">🍜 อาหาร</option>
+                  <option value="ของใช้ชีวิตประจำวัน">🧻 ของใช้ชีวิตประจำวัน</option>
+                  <option value="สัตว์เลี้ยง">🐱 สัตว์เลี้ยง</option>
+                  <option value="หนี้สิน">💳 หนี้สิน</option>
+                  <option value="ครอบครัว">👨‍👩‍👧‍👦 ครอบครัว</option>
+                  <option value="ส่วนตัว">💅 ส่วนตัว</option>
+                  <option value="รายได้">💵 รายได้</option>
+                </select>
+              </div>
+              <div class="mb-2">
+                <label class="small text-muted">รายละเอียด</label>
+                <input type="text" class="form-control" name="detail" id="editDetail">
+              </div>
+              <div class="mb-3">
+                <label class="small text-muted">จำนวนเงิน</label>
+                <input type="number" class="form-control" name="amount" id="editAmount" required step="any">
+              </div>
+              <button type="submit" class="btn btn-save" style="font-size: 1rem;">บันทึกการแก้ไข</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
 
